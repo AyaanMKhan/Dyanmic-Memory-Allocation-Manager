@@ -184,4 +184,6 @@ int main(){
     printf("Freeing 500 bytes of memory from %d", p1);
     free_memory(p1);
     print_memory_blocks();
+
+    // make 200 and 1000 bytes
 }
