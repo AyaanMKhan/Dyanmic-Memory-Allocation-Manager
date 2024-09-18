@@ -54,38 +54,48 @@ void *find_memory_block(memory_node_t *dynamic_memory, size_t size){
 }
 
 
-void *memory_allocation(size_t size){
+void *memory_allocation(size_t size) {
+    // Find a suitable memory block
+    memory_node_t *block = find_memory_block(memory_start, size); 
 
-    memory_node_t *block = (memory_node_t *)(memory_start, size);
-
-
-    // Checks if it worked
-    if(block != POINT_NULL){
-        // Get the new memory and subtreact it from the block
-        block->size = block->size - size - MEMORY_NODE_SIZE;
+    // Checks if a valid block was found
+    if (block != POINT_NULL) {
+        // Calculate the remaining size after allocation
+        uint32_t remaining_size = block->size - size - MEMORY_NODE_SIZE;
         
-        // makes new node from the node we had
-        memory_node_t *node_allocate = (memory_node_t *) (((uint8_t *) block) + MEMORY_NODE_SIZE + block->size);
+        // If there's enough space to create a new block
+        if (remaining_size >= MEMORY_NODE_SIZE) {
+            block->size = remaining_size; // Reduce the size of the current block
 
-        node_allocate->size = size;
-        node_allocate->used = true;
-        node_allocate->next = block->next;
-        node_allocate->prev = block;
+            // Create a new memory node for the allocated block
+            memory_node_t *node_allocate = (memory_node_t *)(((uint8_t *)block) + MEMORY_NODE_SIZE + block->size);
+            node_allocate->size = size;
+            node_allocate->used = true;
+            node_allocate->next = block->next;
+            node_allocate->prev = block;
 
-        // Connect the linked list again
-        if(block->next != POINT_NULL){
-            block->next->prev = node_allocate;
+            // Re-link the list
+            if (block->next != POINT_NULL) {
+                block->next->prev = node_allocate;
+            }
+            block->next = node_allocate;
+
+
+            // Return the usable memory (after the memory node metadata)
+            return (void *)((uint8_t *)node_allocate + MEMORY_NODE_SIZE);
+        } else {
+            // Not enough space to split the block, so just use the entire block
+            block->used = true;
+
+            
+
+            return (void *)((uint8_t *)block + MEMORY_NODE_SIZE);
         }
-        block->next = node_allocate;
+    }
 
-
-        // Returns the new allocated memory
-        return (void *) ((uint8_t) node_allocate + MEMORY_NODE_SIZE);
-    }   
-
-    return POINT_NULL;
-
+    return POINT_NULL; // No suitable block found
 }
+
 
 // Function connects the current with the next memory
 void *merge_next_current(memory_node_t *current){
@@ -180,10 +190,24 @@ int main(){
     void *p1 = memory_allocation(500);
     print_memory_blocks();
 
+    printf("Allocating 200 bytes of memory\n");
+    void *p2 = memory_allocation(200);
+    print_memory_blocks();
+    
+    printf("Allocating 1000 bytes of memory\n");
+    void *p3 = memory_allocation(1000);
+    print_memory_blocks();
 
-    printf("Freeing 500 bytes of memory from %d", p1);
+    printf("Freeing 500 bytes of memory from %p", p1);
     free_memory(p1);
     print_memory_blocks();
 
-    // make 200 and 1000 bytes
+    printf("Freeing 200 bytes of memory from %p\n", p2);
+    free_memory(p2);
+    print_memory_blocks();
+
+    printf("Freeing 1000 bytes of money from %p \n", p3);
+    free_memory(p3);
+    print_memory_blocks();
+
 }
